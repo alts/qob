@@ -23,29 +23,32 @@ local function init(self)
 
   self.board = board
   self.stones = stones
+  self.any_clicked = false
   return self
 end
 
 local function draw(self)
-  local row, stone
+  local stones = self.stones
+  local stone
 
-  for gx=1,#self.board do
-    row = self.board[gx]
-    for gy=1, #row do
-      stone = row[gy]
-      if stone == 1 then
-        graphics.setColor(0, 0, 0)
-        graphics.circle('fill',
-          (gx - 1) * 50, (gy - 1) * 50,
-          12, 24
-        )
-        graphics.setColor(255, 255, 255)
-        graphics.circle('fill',
-          (gx - 1) * 50, (gy - 1) * 50,
-          6, 24
-        )
-      end
+  for i=1,#stones do
+    stone = stones[i]
+
+    graphics.setColor(0, 0, 0)
+    graphics.circle('fill',
+      stone.x * GRID_SIZE, stone.y * GRID_SIZE,
+      STONE_RADIUS, 24
+    )
+    if stone.clicked then
+      graphics.setColor(255, 0, 0)
+    else
+      graphics.setColor(255, 255, 255)
     end
+
+    graphics.circle('fill',
+      stone.x * GRID_SIZE, stone.y * GRID_SIZE,
+      STONE_INNER, 24
+    )
   end
 end
 
@@ -63,9 +66,30 @@ local function search(self, x, y)
     stone = stones[i]
     -- clumsy square collision
     if square_contains(x, y, stone.x * GRID_SIZE, stone.y * GRID_SIZE, STONE_RADIUS) then
-      stone.clicked = not stone.clicked
+      if stone.clicked then
+        stone.clicked = false
+        any_clicked = false
+      else
+        self:unclick_all()
+        stone.clicked = true
+        any_clicked = true
+      end
       return stone
     end
+  end
+
+  if any_clicked then
+    self:unclick_all()
+    any_clicked = false
+  end
+end
+
+
+local function unclick_all(self)
+  local stones = self.stones
+
+  for i=1, #stones do
+    stones[i].clicked = false
   end
 end
 
@@ -73,5 +97,6 @@ end
 game_grid.init = init
 game_grid.draw = draw
 game_grid.search = search
+game_grid.unclick_all = unclick_all
 
 return game_grid

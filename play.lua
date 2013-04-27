@@ -10,7 +10,7 @@ end
 
 
 local function mousepressed(self, x, y, button)
-  print(inspect(game_grid:search(x, y)))
+  game_grid:search(x, y)
 end
 
 
