@@ -6,6 +6,7 @@ local game_grid = {}
 local graphics = love.graphics
 local queue = require 'simple_queue'
 local to_add = clone(queue)
+local stone_obj = require 'stone'
 
 local function make_board()
   local board = {}
@@ -27,7 +28,7 @@ local function init(self)
 
   for gx=6, 12 do
     for gy=4, 7 do
-      stone = {x=gx, y=gy}
+      stone = clone(stone_obj):init(gx, gy)
       board[gx][gy] = stone
       table.insert(stones, stone)
     end
@@ -49,7 +50,7 @@ local function draw(self)
     graphics.setColor(0, 0, 0)
     graphics.circle('fill',
       (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE,
-      STONE_RADIUS, 24
+      STONE_RADIUS, 40
     )
     if stone.clicked then
       graphics.setColor(255, 0, 0)
@@ -61,7 +62,7 @@ local function draw(self)
 
     graphics.circle('fill',
       (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE,
-      STONE_INNER, 24
+      STONE_INNER, 40
     )
   end
 end
@@ -96,6 +97,20 @@ local function search(self, x, y)
   if any_clicked then
     self:unclick_all()
     any_clicked = false
+  end
+end
+
+
+local function clean_stones(stones)
+  local stone
+  for i=1, #stones do
+    stone = stones[i]
+    stone.links = nil
+    stone.rotating = nil
+    stone.free = nil
+    stone.failed = nil
+    stone.revert = nil
+    stone.success = nil
   end
 end
 
@@ -173,6 +188,9 @@ local function build_links(self, stones)
   end
 end
 
+local function shallow_copy(t)
+  return __.map(t, fn.id)
+end
 
 local function rotate_stone(self, direction)
   if not any_clicked then
@@ -184,9 +202,18 @@ local function rotate_stone(self, direction)
   chunk = self:chunk_from_pivot(stone)
 
   self:build_links(chunk)
-  print(inspect(chunk))
 
-  local other, dx, dy, nx, ny
+  local other, dx, dy, nx, ny, space
+
+  -- build dependents
+  local old_board = __.map(self.board, shallow_copy)
+
+  -- wipe moving blocks
+  for i=1, #chunk do
+    other = chunk[i]
+    self.board[other.x][other.y] = false
+  end
+
   for i=1, #chunk do
     other = chunk[i]
     dx = other.x - stone.x
@@ -200,16 +227,51 @@ local function rotate_stone(self, direction)
       ny = stone.y + dx
     end
 
-    if self.board[nx] and self.board[nx][ny] == false then
-      self.board[other.x][other.y] = false
-      other.x = nx
-      other.y = ny
+    if other == stone then
+      stone:succeed()
       self.board[other.x][other.y] = other
+    else
+      space = self.board[nx] and self.board[nx][ny]
+      if space == false and not stone.failed then
+        if old_board[nx][ny] then
+          if not old_board[nx][ny].dependents then
+            old_board[nx][ny].dependents = {}
+          end
+          table.insert(old_board[nx][ny].dependents, other)
+
+          local oldx, oldy = other.x, other.y
+          self.revert = function ()
+            self.board[nx][ny] = false
+            self.board[oldx][oldy] = other
+          end
+          other.x = nx
+          other.y = ny
+          self.board[other.x][other.y] = other
+        elseif other.free then
+          other:succeed()
+          other.x = nx
+          other.y = ny
+          self.board[other.x][other.y] = other
+        else
+          local oldx, oldy = other.x, other.y
+          self.revert = function ()
+            self.board[nx][ny] = false
+            self.board[oldx][oldy] = other
+          end
+          other.x = nx
+          other.y = ny
+          self.board[other.x][other.y] = other
+        end
+      else
+        other:fail()
+        self.board[other.x][other.y] = other
+      end
     end
   end
 
-  unlink_all(self.stones)
-  unrotate_all(self.stones)
+  print 'cleaning'
+
+  clean_stones(self.stones)
   self:unclick_all()
 end
 
