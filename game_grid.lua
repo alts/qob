@@ -1,23 +1,30 @@
 local game_grid = {}
 local graphics = love.graphics
+local queue = require 'simple_queue'
 
-local function init(self)
+local function make_board()
   local board = {}
-  local stones = {}
-  local row
-
   for gx=1, 17 do
     row = {}
     for gy=1, 10 do
-      table.insert(row, 0)
+      table.insert(row, false)
     end
     table.insert(board, row)
   end
+  return board
+end
+
+
+local function init(self)
+  local board = make_board()
+  local stones = {}
+  local stone
 
   for gx=6, 12 do
     for gy=4, 7 do
-      board[gx][gy] = 1
-      table.insert(stones, {x=gx-1, y=gy-1})
+      stone = {x=gx, y=gy}
+      board[gx][gy] = stone
+      table.insert(stones, stone)
     end
   end
 
@@ -36,17 +43,19 @@ local function draw(self)
 
     graphics.setColor(0, 0, 0)
     graphics.circle('fill',
-      stone.x * GRID_SIZE, stone.y * GRID_SIZE,
+      (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE,
       STONE_RADIUS, 24
     )
     if stone.clicked then
       graphics.setColor(255, 0, 0)
+    elseif stone.rotating then
+      graphics.setColor(0, 255, 0)
     else
       graphics.setColor(255, 255, 255)
     end
 
     graphics.circle('fill',
-      stone.x * GRID_SIZE, stone.y * GRID_SIZE,
+      (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE,
       STONE_INNER, 24
     )
   end
@@ -65,7 +74,7 @@ local function search(self, x, y)
   for i=1, #stones do
     stone = stones[i]
     -- clumsy square collision
-    if square_contains(x, y, stone.x * GRID_SIZE, stone.y * GRID_SIZE, STONE_RADIUS) then
+    if square_contains(x, y, (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE, STONE_RADIUS) then
       if stone.clicked then
         stone.clicked = false
         any_clicked = false
