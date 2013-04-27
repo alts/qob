@@ -14,6 +14,15 @@ local function mousepressed(self, x, y, button)
 end
 
 
+local function keypressed(self, key)
+  if key == 'left' then
+    game_grid:rotate_stone(-1)
+  elseif key == 'right' then
+    game_grid:rotate_stone(1)
+  end
+end
+
+
 local function draw()
   -- blocks
   graphics.setColor(255, 255, 0)
@@ -76,5 +85,6 @@ end
 play.enter = enter
 play.draw = draw
 play.mousepressed = mousepressed
+play.keypressed = keypressed
 
 return play
