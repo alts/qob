@@ -10,7 +10,12 @@ end
 
 
 local function draw(self)
-  graphics.draw(self.img, 0, 0)
+  graphics.setColor(255, 255, 255)
+  graphics.draw(self.img, 0, -40)
+  graphics.setColor(0, 0, 0)
+  graphics.printf('made in 48 hours for Ludum Dare #26 by Stephen Altamirano',
+    0, 380, SCREEN_WIDTH, 'center')
+  graphics.printf('click to play', 0, 400, SCREEN_WIDTH, 'center')
 end
 
 local function mousepressed(self)

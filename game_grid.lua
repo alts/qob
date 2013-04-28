@@ -48,8 +48,22 @@ local function init(self)
   self.board = board
   self.stones = stones
   self.any_clicked = false
+  self.turn = YELLOW_TURN
   return self
 end
+
+
+local function end_turn(self)
+  turn_count = turn_count + 1
+  if self.turn == YELLOW_TURN then
+    -- yellow
+    self.turn = BLUE_TURN
+  else
+    -- blue
+    self.turn = YELLOW_TURN
+  end
+end
+
 
 local function yellow_territory(stone)
   return ((stone.x <= 5 and stone.y <= 3) or
@@ -98,6 +112,7 @@ local function draw(self)
 
   graphics.setColor(255, 0, 255)
   graphics.print(turn_count, 30, 30)
+  graphics.print(self.turn, 30, 40)
 end
 
 
@@ -114,6 +129,15 @@ local function search(self, x, y)
     stone = stones[i]
     -- clumsy square collision
     if square_contains(x, y, (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE, STONE_RADIUS) then
+      local goaltending = (
+        (self.turn == BLUE_TURN and yellow_territory(stone)) or
+        (self.turn == YELLOW_TURN and blue_territory(stone))
+      )
+
+      if goaltending then
+        return nil
+      end
+
       if stone.clicked then
         stone.clicked = false
         any_clicked = false
@@ -214,6 +238,7 @@ local function shallow_copy(t)
 end
 
 local function rotate_stone(self, direction)
+  -- abandon all hope ye who enter here
   if not any_clicked then
     return
   end
@@ -359,7 +384,7 @@ local function rotate_stone(self, direction)
     end
   ))
 
-  turn_count = turn_count + 1
+  self:end_turn()
 end
 
 
@@ -490,6 +515,7 @@ game_grid.clicked_stone = clicked_stone
 game_grid.build_links = build_links
 game_grid.undo = undo
 game_grid.update = update
+game_grid.end_turn = end_turn
 
 -- testing
 
