@@ -1,5 +1,5 @@
 function love.conf(t)
-  t.title = 'ROTATOR'
+  t.title = 'qob'
   t.author = 'Stephen Altamirano'
   t.screen.width = 800
   t.screen.height = 450
