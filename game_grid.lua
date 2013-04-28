@@ -41,6 +41,16 @@ local function init(self)
   return self
 end
 
+local function yellow_territory(stone)
+  return ((stone.x <= 5 and stone.y <= 3) or
+          (stone.x >= 13 and stone.y >= 8))
+end
+
+local function blue_territory(stone)
+  return ((stone.x <= 5 and stone.y >= 8) or
+          (stone.x >= 13 and stone.y <= 3))
+end
+
 local function draw(self)
   local stones = self.stones
   local stone
@@ -55,8 +65,10 @@ local function draw(self)
     )
     if stone.clicked then
       graphics.setColor(255, 0, 0)
-    elseif stone.rotating then
-      graphics.setColor(0, 255, 0)
+    elseif blue_territory(stone) then
+      graphics.setColor(0, 0, 255)
+    elseif yellow_territory(stone) then
+      graphics.setColor(255, 255, 0)
     else
       graphics.setColor(255, 255, 255)
     end
