@@ -16,10 +16,11 @@ love.graphics.setBackgroundColor(255, 255, 255)
 local Gamestate = require 'lib.hump.gamestate'
 
 -- game states
-local start = require 'play'
+local start = require 'title'
 
 -- load other states
 local states = {
+  'play'
 }
 
 for i = 1, #states do
