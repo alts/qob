@@ -15,13 +15,18 @@ end
 
 
 local function keypressed(self, key)
-  if key == 'left' then
+  if key == 'left' or key == 'a' then
     game_grid:rotate_stone(-1)
-  elseif key == 'right' then
+  elseif key == 'right' or key == 'd' then
     game_grid:rotate_stone(1)
   elseif key == 'u' then
     game_grid:undo()
   end
+end
+
+
+local function update(self, dt)
+  game_grid:update(dt)
 end
 
 
@@ -88,5 +93,6 @@ play.enter = enter
 play.draw = draw
 play.mousepressed = mousepressed
 play.keypressed = keypressed
+play.update = update
 
 return play

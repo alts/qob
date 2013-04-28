@@ -7,7 +7,16 @@ local graphics = love.graphics
 local queue = require 'simple_queue'
 local to_add = clone(queue)
 local stone_obj = require 'stone'
+local anim_sequence = require 'anim_sequence'
+local anim_collection = require 'animation_collection'
 local old_board = nil
+
+local animations = clone(anim_collection)
+animations:init()
+local ROTATE_TIME = 0.25
+local W = math.pi * 2
+local theta = 0
+local pivot = nil
 
 local function make_board()
   local board = {}
@@ -53,14 +62,21 @@ end
 
 local function draw(self)
   local stones = self.stones
-  local stone
+  local stone, cx, cy
+  local sin = math.sin(theta)
+  local cos = math.cos(theta)
 
   for i=1,#stones do
     stone = stones[i]
+    cx, cy = (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE
+    if stone.to_x then
+      cx = GRID_SIZE * ((pivot.x - 1) - sin * (stone.y - pivot.y) + (stone.x - pivot.x) * cos)
+      cy = GRID_SIZE * ((pivot.y - 1) + sin * (stone.x - pivot.x) + (stone.y - pivot.y) * cos)
+    end
 
     graphics.setColor(0, 0, 0)
     graphics.circle('fill',
-      (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE,
+      cx, cy,
       STONE_RADIUS, 40
     )
     if stone.clicked then
@@ -74,7 +90,7 @@ local function draw(self)
     end
 
     graphics.circle('fill',
-      (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE,
+      cx, cy,
       STONE_INNER, 40
     )
   end
@@ -124,20 +140,6 @@ local function clean_stones(stones)
     stone.failed = nil
     stone.revert = nil
     stone.success = nil
-  end
-end
-
-
-local function unrotate_all(stones)
-  for i=1, #stones do
-    stones[i].rotating = nil
-  end
-end
-
-
-local function unlink_all(stones)
-  for i=1, #stones do
-    stones[i].links = nil
   end
 end
 
@@ -260,20 +262,20 @@ local function rotate_stone(self, direction)
             return function ()
               self.board[nx][ny] = false
               self.board[oldx][oldy] = other
-              other.x = oldx
-              other.y = oldy
+              other.to_x = nil
+              other.to_y = nil
               print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
             end
           end)(other, nx, ny)
-          other.x = nx
-          other.y = ny
-          self.board[other.x][other.y] = other
+          other.to_x = nx
+          other.to_y = ny
+          self.board[nx][ny] = other
           print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         elseif other.free then
           other:succeed()
-          other.x = nx
-          other.y = ny
-          self.board[other.x][other.y] = other
+          other.to_x = nx
+          other.to_y = ny
+          self.board[nx][ny] = other
           print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         else
           local oldx, oldy = other.x, other.y
@@ -281,14 +283,14 @@ local function rotate_stone(self, direction)
             return function ()
               self.board[nx][ny] = false
               self.board[oldx][oldy] = other
-              other.x = oldx
-              other.y = oldy
+              other.to_x = nil
+              other.to_y = nil
               print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
             end
           end)(other, nx, ny)
-          other.x = nx
-          other.y = ny
-          self.board[other.x][other.y] = other
+          other.to_x = nx
+          other.to_y = ny
+          self.board[nx][ny] = other
           print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         end
       else
@@ -302,6 +304,37 @@ local function rotate_stone(self, direction)
 
   clean_stones(self.stones)
   self:unclick_all()
+
+  local factor = (direction == CLOCKWISE) and 1 or -1
+  pivot = stone
+  animations:add(anim_sequence(
+    {ROTATE_TIME, function (dt)
+                    theta = theta + W*dt*factor
+                  end},
+    function ()
+      print('done!')
+      theta = 0
+    end,
+    function ()
+      local stone
+      for i=1,#self.stones do
+        stone = self.stones[i]
+        if stone.to_x then
+          stone.x = stone.to_x
+          stone.y = stone.to_y
+          stone.to_x = nil
+          stone.to_y = nil
+        end
+      end
+    end
+  ))
+end
+
+
+local function update(self, dt)
+  if not animations:is_empty() then
+    animations:run(dt)
+  end
 end
 
 
@@ -424,6 +457,7 @@ game_grid.rotate_stone = rotate_stone
 game_grid.clicked_stone = clicked_stone
 game_grid.build_links = build_links
 game_grid.undo = undo
+game_grid.update = update
 
 -- testing
 
