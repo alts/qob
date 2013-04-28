@@ -285,12 +285,12 @@ local function boards_match(board_a, board_b)
     for gy=1, #board_a[gx] do
       if board_a[gx][gy] == false then
         if board_b[gx][gy] ~= false then
-          print(gx, gy)
+          --print(gx, gy)
           return false
         end
       else
         if board_b[gx][gy] == false then
-          print(gx, gy)
+          --print(gx, gy)
           return false
         end
       end
@@ -324,7 +324,7 @@ local function rotate_stone(self, direction)
     self.board[other.x][other.y] = false
   end
 
-  print(#chunk .. ' stones in chunk')
+  --print(#chunk .. ' stones in chunk')
 
   for i=1, #chunk do
     other = chunk[i]
@@ -343,7 +343,7 @@ local function rotate_stone(self, direction)
       stone:succeed()
       self.board[other.x][other.y] = other
     else
-      print('try: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
+      --print('try: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
       space = self.board[nx] and self.board[nx][ny]
       if space == false and not other.failed then
         if old_board[nx][ny] then
@@ -351,7 +351,7 @@ local function rotate_stone(self, direction)
             old_board[nx][ny].dependents = {}
           end
           table.insert(old_board[nx][ny].dependents, other)
-          print '--   made dep'
+          --print '--   made dep'
           local oldx, oldy = other.x, other.y
           other.revert = (function (other, nx, ny)
             return function ()
@@ -359,19 +359,19 @@ local function rotate_stone(self, direction)
               self.board[oldx][oldy] = other
               other.to_x = nil
               other.to_y = nil
-              print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
+              --print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
             end
           end)(other, nx, ny)
           other.to_x = nx
           other.to_y = ny
           self.board[nx][ny] = other
-          print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
+          --print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         elseif other.free then
           other:succeed()
           other.to_x = nx
           other.to_y = ny
           self.board[nx][ny] = other
-          print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
+          --print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         else
           local oldx, oldy = other.x, other.y
           other.revert = (function (other, nx, ny)
@@ -380,13 +380,13 @@ local function rotate_stone(self, direction)
               self.board[oldx][oldy] = other
               other.to_x = nil
               other.to_y = nil
-              print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
+              --print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
             end
           end)(other, nx, ny)
           other.to_x = nx
           other.to_y = ny
           self.board[nx][ny] = other
-          print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
+          --print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         end
       else
         other:fail()
@@ -395,37 +395,34 @@ local function rotate_stone(self, direction)
     end
   end
 
-  print 'some still waiting?'
+  --print 'some still waiting?'
   local again = true
   local count = 0
   local limit = #chunk + 1
   while again and count < limit do
-    print 'bleh'
     count =  count + 1
     again = false
     for i=1, #chunk do
       other = chunk[i]
-      print(inspect(other))
       if other.to_x and other.failed then
         other.to_x = nil
         other.to_y = nil
-        print('releasing: ('..other.x..', '..other.y..')')
+        --print('releasing: ('..other.x..', '..other.y..')')
       elseif not other.success and not other.failed and other.failures and other.failures > 0 then
         other.to_x = nil
         other.to_y = nil
         other:fail()
-        print('releasing: ('..other.x..', '..other.y..')')
+        --print('releasing: ('..other.x..', '..other.y..')')
       end
     end
   end
 
-  print 'cleaning\n\n'
+  --print 'cleaning\n\n'
 
   clean_stones(self.stones)
   self:unclick_all()
 
   if two_turn_board and boards_match(self.board, two_turn_board) then
-    print 'wat'
     self:undo()
     -- can't undo
     return
