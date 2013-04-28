@@ -19,6 +19,8 @@ local function keypressed(self, key)
     game_grid:rotate_stone(-1)
   elseif key == 'right' then
     game_grid:rotate_stone(1)
+  elseif key == 'u' then
+    game_grid:undo()
   end
 end
 

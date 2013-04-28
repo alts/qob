@@ -24,12 +24,16 @@ local function fail(self)
     links[i]:notify_failure()
   end
 
-  if self.revert then self.revert() end
+  if self.revert then
+    print 'reverting!!'
+    self.revert()
+  end
 end
 
 
 local function succeed(self)
   print '-- succeed called'
+  print ('\t ' .. self.x .. ', ' .. self.y)
   self.success = true
   local links = self.links or {}
   for i=1, #links do
@@ -40,12 +44,14 @@ end
 
 local function notify_success(self)
   print '-- notify_success called'
+  print ('\t ' .. self.x .. ', ' .. self.y)
   self.free = true
 end
 
 
 local function notify_failure(self)
   print '-- notify_failure called'
+  print ('\t ' .. self.x .. ', ' .. self.y)
   if self.failed then return end
 
   local failures = self.failures or 0

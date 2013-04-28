@@ -7,6 +7,7 @@ local graphics = love.graphics
 local queue = require 'simple_queue'
 local to_add = clone(queue)
 local stone_obj = require 'stone'
+local old_board = nil
 
 local function make_board()
   local board = {}
@@ -206,13 +207,15 @@ local function rotate_stone(self, direction)
   local other, dx, dy, nx, ny, space
 
   -- build dependents
-  local old_board = __.map(self.board, shallow_copy)
+  old_board = __.map(self.board, shallow_copy)
 
   -- wipe moving blocks
   for i=1, #chunk do
     other = chunk[i]
     self.board[other.x][other.y] = false
   end
+
+  print(#chunk .. ' stones in chunk')
 
   for i=1, #chunk do
     other = chunk[i]
@@ -231,36 +234,50 @@ local function rotate_stone(self, direction)
       stone:succeed()
       self.board[other.x][other.y] = other
     else
+      print('try: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
       space = self.board[nx] and self.board[nx][ny]
-      if space == false and not stone.failed then
+      if space == false and not other.failed then
         if old_board[nx][ny] then
           if not old_board[nx][ny].dependents then
             old_board[nx][ny].dependents = {}
           end
           table.insert(old_board[nx][ny].dependents, other)
-
+          print '--   made dep'
           local oldx, oldy = other.x, other.y
-          self.revert = function ()
-            self.board[nx][ny] = false
-            self.board[oldx][oldy] = other
-          end
+          other.revert = (function (other, nx, ny)
+            return function ()
+              self.board[nx][ny] = false
+              self.board[oldx][oldy] = other
+              other.x = oldx
+              other.y = oldy
+              print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
+            end
+          end)(other, nx, ny)
           other.x = nx
           other.y = ny
           self.board[other.x][other.y] = other
+          print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         elseif other.free then
           other:succeed()
           other.x = nx
           other.y = ny
           self.board[other.x][other.y] = other
+          print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         else
           local oldx, oldy = other.x, other.y
-          self.revert = function ()
-            self.board[nx][ny] = false
-            self.board[oldx][oldy] = other
-          end
+          other.revert = (function (other, nx, ny)
+            return function ()
+              self.board[nx][ny] = false
+              self.board[oldx][oldy] = other
+              other.x = oldx
+              other.y = oldy
+              print(other.x .. ', ' .. other.y .. ' <- ' .. nx .. ', ' .. ny)
+            end
+          end)(other, nx, ny)
           other.x = nx
           other.y = ny
           self.board[other.x][other.y] = other
+          print('did: ' .. other.x .. ', ' .. other.y .. ' -> ' .. nx .. ', ' .. ny)
         end
       else
         other:fail()
@@ -269,7 +286,7 @@ local function rotate_stone(self, direction)
     end
   end
 
-  print 'cleaning'
+  print 'cleaning\n\n'
 
   clean_stones(self.stones)
   self:unclick_all()
@@ -289,11 +306,11 @@ local function append(stone, acc)
 end
 
 
-local function each_neighbor(grid, stone, callback)
+local function each_neighbor(grid, stone, callback, arg)
   local board = grid.board
   local dx = 0
   local dy = 1
-  local arg, found
+  local found
 
   for i=1, 4 do
     found = board[stone.x + dx] and board[stone.x + dx][stone.y + dy]
@@ -318,12 +335,29 @@ end
 
 
 local function count_neighbors(self, stone)
-  return each_neighbor(self, stone, counter)
+  return each_neighbor(self, stone, counter, 0)
 end
 
 
 local function neighbors(self, stone)
-  return each_neighbor(self, stone, append)
+  return each_neighbor(self, stone, append, {})
+end
+
+
+local function undo(self)
+  local stone
+  if old_board then
+    self.board = old_board
+    for gx=1,#old_board do
+      for gy=1, #old_board[gx] do
+        stone = old_board[gx][gy]
+        if stone then
+          stone.x = gx
+          stone.y = gy
+        end
+      end
+    end
+  end
 end
 
 
@@ -340,25 +374,27 @@ local function chunk_from_pivot(self, pivot)
     stone = q:pop()
     can_rotate = false
 
-    if stone == pivot then
-      can_rotate = true
-    else
-      num_neighbors = self:count_neighbors(stone)
-      can_rotate = (num_neighbors < 3 or
-                    (num_neighbors == 3 and
-                     is_neighbor(stone, pivot)))
-    end
-    checked[stone.x][stone.y] = true
+    if not checked[stone.x][stone.y] then
+      if stone == pivot then
+        can_rotate = true
+      else
+        num_neighbors = self:count_neighbors(stone)
+        can_rotate = (num_neighbors < 3 or
+                      (num_neighbors == 3 and
+                       is_neighbor(stone, pivot)))
+      end
+      checked[stone.x][stone.y] = true
 
-    if can_rotate then
-      table.insert(connected, stone)
-      stone.rotating = true
+      if can_rotate then
+        table.insert(connected, stone)
+        stone.rotating = true
 
-      each_neighbor(self, stone, function (other, _)
-        if not checked[other.x][other.y] then
-          q:add(other)
-        end
-      end)
+        each_neighbor(self, stone, function (other, _)
+          if not checked[other.x][other.y] then
+            q:add(other)
+          end
+        end)
+      end
     end
   end
 
@@ -375,6 +411,7 @@ game_grid.count_neighbors = count_neighbors
 game_grid.rotate_stone = rotate_stone
 game_grid.clicked_stone = clicked_stone
 game_grid.build_links = build_links
+game_grid.undo = undo
 
 -- testing
 
