@@ -56,9 +56,8 @@ local function notify_failure(self)
   print ('\t ' .. self.x .. ', ' .. self.y)
   if self.failed then return end
 
-  local failures = self.failures or 0
-  failures = failures + 1
-  if failures == #self.links then
+  self.failures = (self.failures or 0) + 1
+  if self.failures == #self.links then
     self:fail()
   end
 end

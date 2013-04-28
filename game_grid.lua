@@ -142,6 +142,7 @@ local function clean_stones(stones)
     stone.rotating = nil
     stone.free = nil
     stone.failed = nil
+    stone.failures = nil
     stone.revert = nil
     stone.success = nil
     stone.dependents = nil
@@ -306,11 +307,26 @@ local function rotate_stone(self, direction)
   end
 
   print 'some still waiting?'
-  for i=1, #chunk do
-    other = chunk[i]
-    if not other.success and other.failures and other.failures > 0 then
-      other.to_x = nil
-      other.to_y = nil
+  local again = true
+  local count = 0
+  local limit = #chunk + 1
+  while again and count < limit do
+    print 'bleh'
+    count =  count + 1
+    again = false
+    for i=1, #chunk do
+      other = chunk[i]
+      print(inspect(other))
+      if other.to_x and other.failed then
+        other.to_x = nil
+        other.to_y = nil
+        print('releasing: ('..other.x..', '..other.y..')')
+      elseif not other.success and not other.failed and other.failures and other.failures > 0 then
+        other.to_x = nil
+        other.to_y = nil
+        other:fail()
+        print('releasing: ('..other.x..', '..other.y..')')
+      end
     end
   end
 
