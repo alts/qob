@@ -19,7 +19,7 @@ local function draw(self)
 end
 
 local function mousepressed(self)
-  state_manager:switch('play')
+  state_manager:switch('rules')
 end
 
 

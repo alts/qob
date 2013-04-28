@@ -21,6 +21,7 @@ local start = require 'title'
 -- load other states
 local states = {
   'play',
+  'rules',
   'end_scene'
 }
 

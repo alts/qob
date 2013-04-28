@@ -16,7 +16,7 @@ local W = math.pi * 2
 local theta = 0
 local pivot = nil
 local turn_count = 1
-local turn_limit = 3
+local turn_limit = 100
 
 local two_turn_board = nil
 
@@ -30,6 +30,31 @@ local function make_board()
     table.insert(board, row)
   end
   return board
+end
+
+
+local function demo_init(self)
+  local board = make_board()
+  local stones = {}
+  local stone
+
+  for gx=12, 14 do
+    for gy=4, 7 do
+      stone = clone(stone_obj):init(gx, gy)
+      board[gx][gy] = stone
+      table.insert(stones, stone)
+    end
+  end
+
+  turn_count = 1
+
+  self.board = board
+  self.stones = stones
+  self.any_clicked = false
+  self.turn = YELLOW_TURN
+  self.demo_mode = true
+
+  return self
 end
 
 
@@ -52,6 +77,7 @@ local function init(self)
   self.stones = stones
   self.any_clicked = false
   self.turn = YELLOW_TURN
+  self.demo_mode = false
 
   turn_swipe:swipe(self.turn, {'YELLOW', 'START'})
 
@@ -69,7 +95,7 @@ local function end_turn(self)
     self.turn = YELLOW_TURN
   end
 
-  if turn_count > turn_limit then
+  if turn_count > turn_limit and not self.demo_mode then
     -- eww
     state_manager:switch('end', self:scores())
     return false
@@ -110,9 +136,9 @@ local function draw(self)
     )
     if stone.clicked then
       graphics.setColor(255, 0, 0)
-    elseif blue_territory(stone) then
+    elseif blue_territory(stone) and not self.demo_mode then
       graphics.setColor(0, 0, 255)
-    elseif yellow_territory(stone) then
+    elseif yellow_territory(stone) and not self.demo_mode then
       graphics.setColor(255, 255, 0)
     else
       graphics.setColor(255, 255, 255)
@@ -150,7 +176,7 @@ local function search(self, x, y)
         (self.turn == YELLOW_TURN and blue_territory(stone))
       )
 
-      if goaltending then
+      if goaltending and not self.demo_mode then
         return nil
       end
 
@@ -426,7 +452,7 @@ local function rotate_stone(self, direction)
         end
       end
 
-      if self:end_turn() then
+      if self:end_turn() and not self.demo_mode then
         turn_swipe:swipe(
           self.turn,
           {'TURN', turn_count..' / '..turn_limit}
@@ -579,6 +605,7 @@ game_grid.init = init
 game_grid.draw = draw
 game_grid.update = update
 
+game_grid.demo_init = demo_init
 game_grid.search = search
 game_grid.unclick_all = unclick_all
 game_grid.chunk_from_pivot = chunk_from_pivot
