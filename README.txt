@@ -9,7 +9,7 @@ evilrobotstuff.com
 About
 -----
 qob is a 2 player competitive turn based game
-inspired by Go, Hokra, Piet Mondrian, and Hokra.
+inspired by Go, Hokra, Piet Mondrian, and "Chinese checkers".
 
 
 Controls
