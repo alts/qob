@@ -1,7 +1,7 @@
 inspect = require 'lib.inspect.inspect'
 __ = require 'lib.underscore'
 
-require 'profiler'
+--require 'profiler'
 require 'constants'
 require 'create'
 Timer = require 'lib.hump.timer'
