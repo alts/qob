@@ -20,7 +20,8 @@ local start = require 'title'
 
 -- load other states
 local states = {
-  'play'
+  'play',
+  'end_scene'
 }
 
 for i = 1, #states do

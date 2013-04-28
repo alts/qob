@@ -1,7 +1,4 @@
--- for local testing
-local love = love or {}
-local clone = clone or function() end
-
+local state_manager = require 'state_manager'
 local game_grid = {}
 local graphics = love.graphics
 local queue = require 'simple_queue'
@@ -9,6 +6,7 @@ local to_add = clone(queue)
 local stone_obj = require 'stone'
 local anim_sequence = require 'anim_sequence'
 local anim_collection = require 'animation_collection'
+local turn_swipe = require 'turn_swipe'
 local old_board = nil
 
 local animations = clone(anim_collection)
@@ -17,7 +15,10 @@ local ROTATE_TIME = 0.25
 local W = math.pi * 2
 local theta = 0
 local pivot = nil
-local turn_count = 0
+local turn_count = 1
+local turn_limit = 3
+
+local two_turn_board = nil
 
 local function make_board()
   local board = {}
@@ -45,10 +46,15 @@ local function init(self)
     end
   end
 
+  turn_count = 1
+
   self.board = board
   self.stones = stones
   self.any_clicked = false
   self.turn = YELLOW_TURN
+
+  turn_swipe:swipe(self.turn, {'YELLOW', 'START'})
+
   return self
 end
 
@@ -62,6 +68,14 @@ local function end_turn(self)
     -- blue
     self.turn = YELLOW_TURN
   end
+
+  if turn_count > turn_limit then
+    -- eww
+    state_manager:switch('end', self:scores())
+    return false
+  end
+
+  return true
 end
 
 
@@ -110,9 +124,7 @@ local function draw(self)
     )
   end
 
-  graphics.setColor(255, 0, 255)
-  graphics.print(turn_count, 30, 30)
-  graphics.print(self.turn, 30, 40)
+  turn_swipe:draw()
 end
 
 
@@ -123,12 +135,16 @@ end
 
 local function search(self, x, y)
   local stones = self.stones
-  local stone
+  local stone, contained
 
   for i=1, #stones do
     stone = stones[i]
     -- clumsy square collision
-    if square_contains(x, y, (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE, STONE_RADIUS) then
+    contained = square_contains(
+      x, y,
+      (stone.x - 1) * GRID_SIZE, (stone.y - 1) * GRID_SIZE, STONE_RADIUS
+    )
+    if contained then
       local goaltending = (
         (self.turn == BLUE_TURN and yellow_territory(stone)) or
         (self.turn == YELLOW_TURN and blue_territory(stone))
@@ -237,15 +253,37 @@ local function shallow_copy(t)
   return __.map(t, fn.id)
 end
 
-local function rotate_stone(self, direction)
-  -- abandon all hope ye who enter here
-  if not any_clicked then
-    return
+
+local function boards_match(board_a, board_b)
+  for gx=1, #board_a do
+    for gy=1, #board_a[gx] do
+      if board_a[gx][gy] == false then
+        if board_b[gx][gy] ~= false then
+          print(gx, gy)
+          return false
+        end
+      else
+        if board_b[gx][gy] == false then
+          print(gx, gy)
+          return false
+        end
+      end
+    end
   end
 
+  return true
+end
+
+local function rotate_stone(self, direction)
+  -- abandon all hope ye who enter here
   local stone = self:clicked_stone()
 
   chunk = self:chunk_from_pivot(stone)
+
+  if #chunk == 0 then
+    -- no selection
+    return
+  end
 
   self:build_links(chunk)
 
@@ -360,6 +398,15 @@ local function rotate_stone(self, direction)
   clean_stones(self.stones)
   self:unclick_all()
 
+  if two_turn_board and boards_match(self.board, two_turn_board) then
+    print 'wat'
+    self:undo()
+    -- can't undo
+    return
+  else
+    two_turn_board = old_board
+  end
+
   local factor = (direction == CLOCKWISE) and 1 or -1
   pivot = stone
   animations:add(anim_sequence(
@@ -367,11 +414,8 @@ local function rotate_stone(self, direction)
                     theta = theta + W*dt*factor
                   end},
     function ()
-      print('done!')
-      theta = 0
-    end,
-    function ()
       local stone
+      theta = 0
       for i=1,#self.stones do
         stone = self.stones[i]
         if stone.to_x then
@@ -381,10 +425,15 @@ local function rotate_stone(self, direction)
           stone.to_y = nil
         end
       end
+
+      if self:end_turn() then
+        turn_swipe:swipe(
+          self.turn,
+          {'TURN', turn_count..' / '..turn_limit}
+        )
+      end
     end
   ))
-
-  self:end_turn()
 end
 
 
@@ -392,6 +441,8 @@ local function update(self, dt)
   if not animations:is_empty() then
     animations:run(dt)
   end
+
+  turn_swipe:update(dt)
 end
 
 
@@ -456,6 +507,8 @@ local function undo(self)
         if stone then
           stone.x = gx
           stone.y = gy
+          stone.to_x = nil
+          stone.to_y = nil
         end
       end
     end
@@ -503,9 +556,29 @@ local function chunk_from_pivot(self, pivot)
   return connected
 end
 
+
+local function scores(self)
+  local score_t = {0, 0}
+  local stones = self.stones
+  local stone
+
+  for i=1, #stones do
+    stone = stones[i]
+    if yellow_territory(stone) then
+      score_t[1] = score_t[1] + 1
+    elseif blue_territory(stone) then
+      score_t[2] = score_t[2] + 1
+    end
+  end
+
+  return score_t
+end
+
 -- interface
 game_grid.init = init
 game_grid.draw = draw
+game_grid.update = update
+
 game_grid.search = search
 game_grid.unclick_all = unclick_all
 game_grid.chunk_from_pivot = chunk_from_pivot
@@ -514,10 +587,7 @@ game_grid.rotate_stone = rotate_stone
 game_grid.clicked_stone = clicked_stone
 game_grid.build_links = build_links
 game_grid.undo = undo
-game_grid.update = update
 game_grid.end_turn = end_turn
-
--- testing
-
+game_grid.scores = scores
 
 return game_grid
