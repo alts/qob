@@ -17,6 +17,7 @@ local ROTATE_TIME = 0.25
 local W = math.pi * 2
 local theta = 0
 local pivot = nil
+local turn_count = 0
 
 local function make_board()
   local board = {}
@@ -94,6 +95,9 @@ local function draw(self)
       STONE_INNER, 40
     )
   end
+
+  graphics.setColor(255, 0, 255)
+  graphics.print(turn_count, 30, 30)
 end
 
 
@@ -140,6 +144,7 @@ local function clean_stones(stones)
     stone.failed = nil
     stone.revert = nil
     stone.success = nil
+    stone.dependents = nil
   end
 end
 
@@ -300,6 +305,15 @@ local function rotate_stone(self, direction)
     end
   end
 
+  print 'some still waiting?'
+  for i=1, #chunk do
+    other = chunk[i]
+    if not other.success and other.failures and other.failures > 0 then
+      other.to_x = nil
+      other.to_y = nil
+    end
+  end
+
   print 'cleaning\n\n'
 
   clean_stones(self.stones)
@@ -328,6 +342,8 @@ local function rotate_stone(self, direction)
       end
     end
   ))
+
+  turn_count = turn_count + 1
 end
 
 

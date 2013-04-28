@@ -16,11 +16,13 @@ local function fail(self)
 
   local deps = self.dependents or {}
   for i=1, #deps do
+    print('\t ('..self.x..', '..self.y..') :: ('..deps[i].x..', '..deps[i].y..')')
     deps[i]:fail()
   end
 
   local links = self.links or {}
   for i=1, #links do
+    print('\t ('..self.x..', '..self.y..') >> ('..links[i].x..', '..links[i].y..')')
     links[i]:notify_failure()
   end
 
